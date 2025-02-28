@@ -5,8 +5,8 @@ using namespace Engine;
 void terminateGLFW();
 
 int main() {
-	const int windowWidth = 1920;
-	const int windowHeight = 1080;
+	const int windowWidth = 1200;
+	const int windowHeight = 800;
 	const bool fullScreenMode = false;
 
 	// Create Window
@@ -28,12 +28,15 @@ int main() {
 	// Create vertices for a square
 	// Update Vertex in shader.h to add more attributes
 	Vertex vertices[] = {
-		// Postion							// Color
-		{ glm::vec3(0.5f, -0.5f, 0.0f),		glm::vec4(0.9f, 0.8f, 0.2f, 1.0f) },	// 0 Bottom Right
-		{ glm::vec3(0.5f, 0.5f, 0.0f),		glm::vec4(0.2f, 0.9f, 0.8f, 1.0f) },	// 1 Top Right
-		{ glm::vec3(-0.5f, 0.5f, 0.0f),		glm::vec4(0.8f, 0.2f, 0.9f, 1.0f) },	// 2 Top Left
-		{ glm::vec3(-0.5f, -0.5f, 0.0f),	glm::vec4(0.8f, 0.9f, 0.2f, 1.0f) },	// 3 Bottom Left
+		
+		{ glm::vec3(1.0f,  1.0f, 0.0f),     glm::vec4(0.8f, 0.9f, 0.2f, 1.0f) },     // 3 Top Right
+		{ glm::vec3(1.0f, -1.0f, 0.0f),     glm::vec4(0.2f, 0.9f, 0.8f, 1.0f) },    // 1 Bottom Right
+		{ glm::vec3(-1.0f, -1.0f, 0.0f),    glm::vec4(0.9f, 0.8f, 0.2f, 1.0f) },    // 0 Bottom Left
+		{ glm::vec3(-1.0f,  1.0f, 0.0f),    glm::vec4(0.8f, 0.2f, 0.9f, 1.0f) },    // 2 Top Left
+		
+
 	};
+
 	// Automaticall calculate required data
 	GLuint vertexLen = sizeof(Vertex) / sizeof(float);
 	GLsizeiptr verticesByteSize = sizeof(vertices);
