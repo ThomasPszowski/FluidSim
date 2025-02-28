@@ -5,8 +5,8 @@ using namespace Engine;
 void terminateGLFW();
 
 int main() {
-	const int windowWidth = 1200;
-	const int windowHeight = 800;
+	const int windowWidth = 1000;
+	const int windowHeight = 1000;
 	const bool fullScreenMode = false;
 
 	// Create Window
@@ -63,7 +63,6 @@ int main() {
 	// Set clear color
 	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
-	// Main loop
 	while (!glfwWindowShouldClose(Window::nativeWindow)) {
 		// Clear the screen
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -71,10 +70,13 @@ int main() {
 		// Handle input
 		Input::handleKeyInput();
 
+		// Set the zoom uniform
+		shader->use();
+		GLint zoomLocation = glGetUniformLocation(shader->getID(), "zoom");
+		glUniform1f(zoomLocation, Input::zoom);
+
 		// Render
 		Buffers::useVAO(vaoID);
-		shader->use();
-		//glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 		glDrawElements(GL_TRIANGLES, indicesLen, GL_UNSIGNED_INT, 0);
 
 		// Swap buffers & Handle window events

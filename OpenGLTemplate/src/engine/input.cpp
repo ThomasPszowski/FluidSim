@@ -1,8 +1,10 @@
-#include "engine/input.h"
+﻿#include "engine/input.h"
 #include "engine/window.h"
 
 namespace Engine {
 	namespace Input {
+		float zoom = 1.0;  
+
 		bool keyPressedData[GLFW_KEY_LAST] = {};
 		bool mouseButtonPressedData[GLFW_MOUSE_BUTTON_LAST] = {};
 		float mouseX = 0.0f;
@@ -46,6 +48,14 @@ namespace Engine {
 		void mouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 			mouseScrollX = (float)xoffset;
 			mouseScrollY = (float)yoffset;
+
+			// Zwiększ/zmniejsz zoom w zależności od scrolla
+			if (yoffset > 0) {
+				Engine::Input::zoom *= 1.1f;  // Zwiększenie zoomu
+			}
+			else if (yoffset < 0) {
+				Engine::Input::zoom *= 0.9f;  // Zmniejszenie zoomu
+			}
 		}
 	}
 }

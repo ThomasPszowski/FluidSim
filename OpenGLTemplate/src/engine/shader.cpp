@@ -121,4 +121,8 @@ namespace Engine {
 	void Shader::setVec4(const std::string& name, glm::vec4 vec) {
 		glUniform4f(glGetUniformLocation(shaderID, name.c_str()), vec.x, vec.y, vec.z, vec.w);
 	}
+
+	GLuint Shader::getID() {
+		return shaderID;
+	}
 }
