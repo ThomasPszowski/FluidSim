@@ -4,8 +4,12 @@
 namespace Engine {
 	namespace Input {
 		extern float zoom;
+		extern int maxIter;
 		extern bool keyPressedData[GLFW_KEY_LAST];
 		extern bool mouseButtonPressedData[GLFW_MOUSE_BUTTON_LAST];
+		extern float moveSpeed;
+		extern float centerX;
+		extern float centerY;
 		extern float mouseX;
 		extern float mouseY;
 		extern float mouseScrollX;

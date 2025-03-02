@@ -1,4 +1,4 @@
-#include "core.h"
+﻿#include "core.h"
 
 using namespace Engine;
 
@@ -12,7 +12,7 @@ int main() {
 	// Create Window
 	const bool success = Window::createWindow(windowWidth, windowHeight, "OpenGL Template", fullScreenMode);
 	if (!success) return -1;
-
+	glfwSetInputMode(Window::nativeWindow, GLFW_STICKY_KEYS, GLFW_TRUE);
 	// Initialize shader
 	// Remember to delete shaders created this way at the end
 	Shader* shader = NULL;
@@ -73,10 +73,17 @@ int main() {
 		// Set the zoom uniform
 		shader->use();
 		GLint zoomLocation = glGetUniformLocation(shader->getID(), "zoom");
+		
+		GLint centerLocation = glGetUniformLocation(shader->getID(), "center");
+		GLint iterLocation = glGetUniformLocation(shader->getID(), "maxIter");
+
 		glUniform1f(zoomLocation, Input::zoom);
+		glUniform1i(iterLocation, Input::maxIter);
+		glUniform2f(centerLocation, Input::centerX, Input::centerY);
+
+		Buffers::useVAO(vaoID);
 
 		// Render
-		Buffers::useVAO(vaoID);
 		glDrawElements(GL_TRIANGLES, indicesLen, GL_UNSIGNED_INT, 0);
 
 		// Swap buffers & Handle window events
@@ -90,11 +97,7 @@ int main() {
 	return 0;
 }
 
-void Input::handleKeyInput() {
-	if (Input::isKeyDown(GLFW_KEY_ESCAPE)) {
-		Window::close();
-	}
-}
+
 
 void terminateGLFW() {
 	glfwDestroyWindow(Window::nativeWindow);
