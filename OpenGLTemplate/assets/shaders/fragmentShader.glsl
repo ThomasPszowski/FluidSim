@@ -1,4 +1,4 @@
-﻿#version 460 core
+#version 460 core
 
 out vec4 FragColor;
 in vec2 TexCoords; // UV coordinates from vertex shader
@@ -24,21 +24,20 @@ uniform vec2 center;
 const int color_iter = 1000; 
 
 vec3 mapToColor(float t) {
-    // Definicja kolorów
 vec3 color1 = vec3(0.1, 0.1, 0.2);  
 vec3 color2 = vec3(0.6, 0.0, 0.6);  
 vec3 color3 = vec3(0.5, 0.0, 0.8);  
 vec3 color4 = vec3(0.0, 0.5, 0.5); 
 
-    // Mapowanie w czterech przedziałach
+    
     if (t < 0.25) {
-        return mix(color1, color2, t * 4.0); // Przejście od czerwonego do zielonego
+        return mix(color1, color2, t * 4.0); 
     } else if (t < 0.5) {
-        return mix(color2, color3, (t - 0.25) * 4.0); // Przejście od zielonego do niebieskiego
+        return mix(color2, color3, (t - 0.25) * 4.0); 
     } else if (t < 0.75) {
-        return mix(color3, color4, (t - 0.5) * 4.0); // Przejście od niebieskiego do żółtego
+        return mix(color3, color4, (t - 0.5) * 4.0); 
     } else {
-        return mix(color4, color1, (t - 0.75) * 4.0); // Przejście od żółtego do czerwonego
+        return mix(color4, color1, (t - 0.75) * 4.0); 
     }
 }
 
