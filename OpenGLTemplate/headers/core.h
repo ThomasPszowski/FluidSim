@@ -10,9 +10,17 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <thread>
+#include <chrono>
 
 #include "engine/window.h"
 #include "engine/input.h"
 #include "engine/shader.h"
 #include "engine/buffers.h"
 #include "engine/data.h"
+
+#include "simulation/aliases.h"
+#include "simulation/debug.h"
+#include "simulation/WaterSim.h"
+
+#include <Windows.h>

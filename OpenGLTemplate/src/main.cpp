@@ -1,105 +1,132 @@
 ﻿#include "core.h"
-
 using namespace Engine;
 
 void terminateGLFW();
 
+const int MAX_POINTS = 1000;
+GLuint pointsVAO, pointsVBO;
+std::vector<Point2D> points(MAX_POINTS);
+
+void simulation_thread();
+
+bool isRunning = true;
+
 int main() {
-	const int windowWidth = 1000;
-	const int windowHeight = 1000;
-	const bool fullScreenMode = false;
+    const int windowWidth = 900, windowHeight = 900;
+    const bool fullScreenMode = false;
+    float pointSize = 4; // Możesz zmieniać ten rozmiar dynamicznie
 
-	// Create Window
-	const bool success = Window::createWindow(windowWidth, windowHeight, "OpenGL Template", fullScreenMode);
-	if (!success) return -1;
-	glfwSetInputMode(Window::nativeWindow, GLFW_STICKY_KEYS, GLFW_TRUE);
-	// Initialize shader
-	// Remember to delete shaders created this way at the end
-	Shader* shader = NULL;
-	try {
-		shader = new Shader("assets/shaders/vertexShader.glsl", "assets/shaders/fragmentShader.glsl");
-	}
-	catch (std::exception& e) {
-		std::cout << e.what() << std::endl;
-		terminateGLFW();
-		return -1;
-	}
+    std::thread watek(simulation_thread);
+    //watek.join();
 
-	// Create vertices for a square
-	// Update Vertex in shader.h to add more attributes
-	Vertex vertices[] = {
-		
-		{ glm::vec3(1.0f,  1.0f, 0.0f),     glm::vec4(0.8f, 0.9f, 0.2f, 1.0f) },     // 3 Top Right
-		{ glm::vec3(1.0f, -1.0f, 0.0f),     glm::vec4(0.2f, 0.9f, 0.8f, 1.0f) },    // 1 Bottom Right
-		{ glm::vec3(-1.0f, -1.0f, 0.0f),    glm::vec4(0.9f, 0.8f, 0.2f, 1.0f) },    // 0 Bottom Left
-		{ glm::vec3(-1.0f,  1.0f, 0.0f),    glm::vec4(0.8f, 0.2f, 0.9f, 1.0f) },    // 2 Top Left
-		
+    if (!Window::createWindow(windowWidth, windowHeight, "OpenGL Points", fullScreenMode)) return -1;
+    glfwSetInputMode(Window::nativeWindow, GLFW_STICKY_KEYS, GLFW_TRUE);
+    glEnable(GL_PROGRAM_POINT_SIZE);
 
-	};
+    Shader* shader = nullptr;
+    try {
+        shader = new Shader("assets/shaders/vertexShader.glsl", "assets/shaders/fragmentShader.glsl");
+    }
+    catch (std::exception& e) {
+        std::cout << e.what() << std::endl;
+        terminateGLFW();
+        return -1;
+    }
+   
+    // Tworzenie VAO i VBO dla punktów
+    glGenVertexArrays(1, &pointsVAO);
+    glGenBuffers(1, &pointsVBO);
 
-	// Automaticall calculate required data
-	GLuint vertexLen = sizeof(Vertex) / sizeof(float);
-	GLsizeiptr verticesByteSize = sizeof(vertices);
-	GLuint vertexCount = (GLuint)(verticesByteSize / vertexLen / sizeof(float));
-	// Set usage type GL_STATIC_DRAW, GL_DYNAMIC_DRAW, etc.
-	GLenum usage = GL_STATIC_DRAW;
+    glBindVertexArray(pointsVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, pointsVBO);
+    glBufferData(GL_ARRAY_BUFFER, MAX_POINTS * sizeof(Point2D), points.data(), GL_DYNAMIC_DRAW);
 
-	// Create the indices
-	GLuint indices[] = {
-		0, 1, 2,
-		2, 3, 0
-	};
-	GLuint indicesByteSize = sizeof(indices);
-	GLuint indicesLen = (GLuint)(indicesByteSize / sizeof(GLuint));
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Point2D), (void*)0);
+    glEnableVertexAttribArray(0);
 
-	// Create VAO, VBO, EBO & set attributes
-	GLuint vaoID = Buffers::createVAO();
-	GLuint bindingIndex = 0;
-	Buffers::createVBO(vaoID, verticesByteSize, vertices, bindingIndex, vertexLen, usage);
-	Buffers::createEBO(vaoID, indicesByteSize, indices, usage);
-	Buffers::addVertexAttrib(vaoID, 0, 3, offsetof(Vertex, position), bindingIndex);		// Position
-	Buffers::addVertexAttrib(vaoID, 1, 4, offsetof(Vertex, color), bindingIndex);		// Color
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 
-	// Set clear color
-	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    // Generowanie początkowych punktów
+    
 
-	while (!glfwWindowShouldClose(Window::nativeWindow)) {
-		// Clear the screen
-		glClear(GL_COLOR_BUFFER_BIT);
+    glClearColor(0,0,0,0);
 
-		// Handle input
-		Input::handleKeyInput();
+    while (!glfwWindowShouldClose(Window::nativeWindow)) {
+        glClear(GL_COLOR_BUFFER_BIT);
+        
+        shader->use();
+        glUniform2f(glGetUniformLocation(shader->getID(), "center"), Input::centerX, Input::centerY);
+        glUniform1f(glGetUniformLocation(shader->getID(), "zoom"), Input::zoom);
+        glUniform1f(glGetUniformLocation(shader->getID(), "pointSize"), pointSize); // Ustawienie rozmiaru punktu
 
-		// Set the zoom uniform
-		shader->use();
-		GLint zoomLocation = glGetUniformLocation(shader->getID(), "zoom");
-		
-		GLint centerLocation = glGetUniformLocation(shader->getID(), "center");
-		GLint iterLocation = glGetUniformLocation(shader->getID(), "maxIter");
+        glBindVertexArray(pointsVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, pointsVBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, MAX_POINTS * sizeof(Point2D), points.data());
 
-		glUniform1f(zoomLocation, Input::zoom);
-		glUniform1i(iterLocation, Input::maxIter);
-		glUniform2f(centerLocation, Input::centerX, Input::centerY);
+        glDrawArrays(GL_POINTS, 0, MAX_POINTS);
 
-		Buffers::useVAO(vaoID);
+        glfwSwapBuffers(Window::nativeWindow);
+        glfwPollEvents();
+    }
 
-		// Render
-		glDrawElements(GL_TRIANGLES, indicesLen, GL_UNSIGNED_INT, 0);
+    glDeleteBuffers(1, &pointsVBO);
+    glDeleteVertexArrays(1, &pointsVAO);
+    delete shader;
+	// force the simulation thread to terminate
 
-		// Swap buffers & Handle window events
-		glfwSwapBuffers(Window::nativeWindow);
-		glfwPollEvents();
-	}
+	isRunning = false;
+	watek.join();
+    terminateGLFW();
+    return 0;
+}
 
-	// Terminate
-	delete shader;
-	terminateGLFW();
-	return 0;
+void terminateGLFW() {
+    glfwDestroyWindow(Window::nativeWindow);
+    glfwTerminate();
 }
 
 
+void simulation_thread() {
+    using namespace std;
+    WaterSim sim(MAX_POINTS);
+    sim.step_size = 0.001;
+    sim.velocity_damping = 1;
+    sim.collision_smoothness = 1;
+    sim.collision_strength = 1;
+    sim.gravity_vector[0] = 0;
+    sim.gravity_vector[1] = 0.1;
+    sim.SetGridSize(50);
 
-void terminateGLFW() {
-	glfwDestroyWindow(Window::nativeWindow);
-	glfwTerminate();
+    sim.ArrangeParticlesSquare();
+
+    int fps = 60;
+    int delay = 1000 / fps;
+
+    auto last = chrono::high_resolution_clock::now();
+    auto current = chrono::high_resolution_clock::now();
+
+    while (isRunning)
+    {
+        current = chrono::high_resolution_clock::now();
+        auto duration = chrono::duration_cast<chrono::milliseconds>(current - last).count();
+        if (duration < delay) {
+            this_thread::sleep_for(chrono::milliseconds(delay - duration));
+        }
+        last = current;
+        sim.UpdateSim();
+		sim.GenerateOutput(points);
+
+        // check for R key
+        if (GetAsyncKeyState(0x52) & 0x8000) {
+            RotateVector(sim.gravity_vector, 0.1);
+            // display the new gravity vector
+            cout << "Gravity vector: (" << sim.gravity_vector[0] << ", " << sim.gravity_vector[1] << ")" << endl;
+            // display the angle of the gravity vector
+            cout << "Angle: " << atan2(sim.gravity_vector[1], sim.gravity_vector[0]) << endl;
+        }
+
+
+    }
+
 }

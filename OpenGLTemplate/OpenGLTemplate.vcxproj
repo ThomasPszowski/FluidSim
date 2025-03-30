@@ -24,6 +24,7 @@
     <ProjectGuid>{a04e3edc-cd1b-4f6e-9145-30264f66b2d9}</ProjectGuid>
     <RootNamespace>OpenGLTemplate</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>SimpleFluidSim</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -148,11 +149,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="headers\glad.c" />
+    <ClCompile Include="src\debug.cpp" />
     <ClCompile Include="src\engine\buffers.cpp" />
     <ClCompile Include="src\engine\input.cpp" />
     <ClCompile Include="src\engine\shader.cpp" />
     <ClCompile Include="src\engine\window.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\WaterSim.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="headers\core.h" />
@@ -161,6 +164,9 @@
     <ClInclude Include="headers\engine\input.h" />
     <ClInclude Include="headers\engine\shader.h" />
     <ClInclude Include="headers\engine\window.h" />
+    <ClInclude Include="headers\simulation\aliases.h" />
+    <ClInclude Include="headers\simulation\debug.h" />
+    <ClInclude Include="headers\simulation\WaterSim.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="assets\shaders\fragmentShader.glsl" />

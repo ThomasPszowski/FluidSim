@@ -11,8 +11,8 @@ namespace Engine {
 		bool keyPressedData[GLFW_KEY_LAST] = {};
 		bool mouseButtonPressedData[GLFW_MOUSE_BUTTON_LAST] = {};
 		float moveSpeed = 0.05f;
-		float centerX = -0.743643887037158704752191506114774;
-		float centerY = 0.131825904205311970493132056385139;
+		float centerX = 0.5;
+		float centerY = 0.5;
 		float mouseX = 0.0f;
 		float mouseY = 0.0f;
 		float mouseScrollX = 0.0f;

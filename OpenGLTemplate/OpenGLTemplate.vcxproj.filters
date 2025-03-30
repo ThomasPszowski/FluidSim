@@ -33,6 +33,12 @@
     <ClCompile Include="src\engine\buffers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\debug.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\WaterSim.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="headers\core.h">
@@ -51,6 +57,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="headers\engine\data.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\simulation\aliases.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\simulation\debug.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\simulation\WaterSim.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
