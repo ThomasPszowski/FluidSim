@@ -27,9 +27,10 @@ public:
 	typedef std::list<WaterSim::Particle*> lp;
 	typedef std::vector<WaterSim::Particle> vp;
 	
-	float epsilon = 0.000001;
+	float epsilon = 0.0001;
 	float collision_strength = 1;
-	float collision_smoothness = 50;
+	float same_position_collision_strength = 1;
+	float collision_smoothness =1;
 	float step_size = 0.001;
 	float velocity_damping = 0.99;
 	float gravity_vector[2] = { 0, 0.1 };
@@ -44,6 +45,8 @@ public:
 
 	void Move(Particle& p);
 
+	void MoveWithinCircle(Particle& p);
+
 	void UpdateSim();
 
 	void Collide(Particle& p1, Particle& p2);
@@ -57,6 +60,8 @@ public:
 	void ArrangeParticlesSquare();
 
 	void SetGridSize(int size);
+
+	void LimitVelocity(float max_v);
 };
 
 

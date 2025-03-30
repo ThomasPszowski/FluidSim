@@ -17,7 +17,8 @@ namespace Engine {
 		float mouseY = 0.0f;
 		float mouseScrollX = 0.0f;
 		float mouseScrollY = 0.0f;
-
+		float normX = 0;
+		float normY = 0;
 		// Utility
 		bool isKeyDown(int key) {
 			if (key >= 0 && key < GLFW_KEY_LAST) {
@@ -57,16 +58,12 @@ namespace Engine {
 				glfwGetWindowSize(window, &width, &height);
 
 				// Przelicz współrzędne ekranu na [-1,1]
-				float normX = (mouseX / width) * 2.0f - 1.0f;
-				float normY = 1.0f - (mouseY / height) * 2.0f;  // Odwracamy oś Y
-
-				// Przekształć do współrzędnych Mandelbrota
-				Input::centerX += normX * 1.5 / Input::zoom;
-				Input::centerY += normY * 1.5 / Input::zoom;
+				normX = (mouseX / width) * 2.0f - 1.0f;
+				normY = 1.0f - (mouseY / height) * 2.0f;  // Odwracamy oś Y
 
 				// wyswietl dokladne wspolrzedne
 				std::cout << std::fixed << std::setprecision(8);
-				std::cout << "centerX: " << Input::centerX << " centerY: " << Input::centerY << std::endl;
+				std::cout << "x: " << normX << " y: " << normY << std::endl;
 				std::cout << "zoom: " << Input::zoom << std::endl;
 			}
 		}

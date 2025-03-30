@@ -59,6 +59,7 @@ namespace Engine {
 				glfwSetCursorPosCallback(nativeWindow, Input::mousePosCallback);			// Window mouse position callback
 				glfwSetMouseButtonCallback(nativeWindow, Input::mouseButtonCallback);	// Window mouse button callback
 				glfwSetScrollCallback(nativeWindow, Input::mouseScrollCallback);			// Window mouse scroll callback
+
 			}
 		}
 

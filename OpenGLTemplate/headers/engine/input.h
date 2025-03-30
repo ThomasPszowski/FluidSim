@@ -14,6 +14,10 @@ namespace Engine {
 		extern float mouseY;
 		extern float mouseScrollX;
 		extern float mouseScrollY;
+		extern float scrollButtonX;
+		extern float scrollButtonY;
+		extern float normX;
+		extern float normY;
 
 		// Handle user input
 		void handleKeyInput();

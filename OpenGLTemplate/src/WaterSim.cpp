@@ -37,16 +37,33 @@ void WaterSim::Move(Particle& p) {
 	else if (p.y < 0) p.y = 0;
 }
 
+void WaterSim::MoveWithinCircle(Particle& p) {
+	p.x += p.vx * step_size;
+	p.y += p.vy * step_size;
+	static const float radius = 0.499;
+	static const float squared_radius = radius * radius;
+	float x_relative_to_center = p.x - radius;
+	float y_relative_to_center = p.y - radius;
+	float squared_distance = x_relative_to_center * x_relative_to_center + y_relative_to_center * y_relative_to_center;
+	if (squared_distance >= squared_radius) {
+		float distance = sqrt(squared_distance);
+		float factor = radius / distance;
+		p.x = radius + x_relative_to_center * factor;
+		p.y = radius + y_relative_to_center * factor;
+	}
+	
+}
+
 void WaterSim::Collide(Particle& p1, Particle& p2)
 {
 	float dx = p1.x - p2.x;
 	float dy = p1.y - p2.y;
 	float squared_distance = dx * dx + dy * dy;
 	if (squared_distance < epsilon) {
-		p1.vx = (rand() - 1.) / RAND_MAX - 0.5 * collision_strength;
-		p1.vy = (rand() - 1.) / RAND_MAX - 0.5 * collision_strength;
-		p2.vx = (rand() - 1.) / RAND_MAX - 0.5 * collision_strength;
-		p2.vy = (rand() - 1.) / RAND_MAX - 0.5 * collision_strength;
+		p1.vx = (rand() - 1.) / RAND_MAX - 0.5 * same_position_collision_strength;
+		p1.vy = (rand() - 1.) / RAND_MAX - 0.5 * same_position_collision_strength;
+		p2.vx = (rand() - 1.) / RAND_MAX - 0.5 * same_position_collision_strength;
+		p2.vy = (rand() - 1.) / RAND_MAX - 0.5 * same_position_collision_strength;
 		return;
 	}
 	float repulsion = collision_strength / (collision_smoothness * squared_distance + 1);
@@ -113,10 +130,32 @@ void WaterSim::ArrangeParticlesSquare()
 	
 }
 
+void WaterSim::LimitVelocity(float max_squared_v) {
+
+	for (Particle& p : particle_vector) {
+		float squared_v = p.vx * p.vx + p.vy * p.vy;
+		if (squared_v > max_squared_v) {
+			float factor = sqrt(max_squared_v / squared_v);
+			p.vx *= factor;
+			p.vy *= factor;
+		}
+	}
+}
 
 
 void WaterSim::UpdateSim()
 {
+	for (Particle& p : particle_vector) {
+
+		p.vx += gravity_vector[0];
+		p.vy += gravity_vector[1];
+		p.vx *= velocity_damping;
+		p.vy *= velocity_damping;
+
+	}
+
+	LimitVelocity(0.1);
+
 	for (Particle& p : particle_vector) {
 		for (int i = -1; i <= 1; i++) {
 			for (int j = -1; j <= 1; j++) {
@@ -132,12 +171,11 @@ void WaterSim::UpdateSim()
 			}
 		}
 	}
+	
+
 	for (Particle& p : particle_vector) {
-		p.vx *= velocity_damping;
-		p.vy *= velocity_damping;
-		p.vx += gravity_vector[0];
-		p.vy += gravity_vector[1];
-		Move(p);
+		//Move(p);
+		MoveWithinCircle(p);
 		UpdateGrid(p);
 	}
 }

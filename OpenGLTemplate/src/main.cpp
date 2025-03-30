@@ -3,7 +3,7 @@ using namespace Engine;
 
 void terminateGLFW();
 
-const int MAX_POINTS = 1000;
+const int MAX_POINTS = 50;
 GLuint pointsVAO, pointsVBO;
 std::vector<Point2D> points(MAX_POINTS);
 
@@ -33,6 +33,10 @@ int main() {
         return -1;
     }
    
+    Vertex centerPoint[] = {
+    { glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f) } // White point at center
+    };
+
     // Tworzenie VAO i VBO dla punktów
     glGenVertexArrays(1, &pointsVAO);
     glGenBuffers(1, &pointsVBO);
@@ -47,7 +51,18 @@ int main() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    // Generowanie początkowych punktów
+    // Create a VBO, VAO for the center point (new VBO for the point)
+    GLuint vaoID_center = Buffers::createVAO();
+    GLuint vboID_center = 0; // You will create this buffer
+    GLuint bindingIndex_center = 1;  // A new binding index for the point buffer
+    GLsizeiptr centerVertexByteSize = sizeof(centerPoint);
+
+    // Create the VBO
+    Buffers::createVBO(vaoID_center, centerVertexByteSize, centerPoint, bindingIndex_center, sizeof(Vertex) / sizeof(float), GL_STATIC_DRAW);
+
+    // Add vertex attributes for the point (Position and Color)
+    Buffers::addVertexAttrib(vaoID_center, 0, 3, offsetof(Vertex, position), bindingIndex_center);  // Position
+    Buffers::addVertexAttrib(vaoID_center, 1, 4, offsetof(Vertex, color), bindingIndex_center);
     
 
     glClearColor(0,0,0,0);
@@ -90,13 +105,13 @@ void terminateGLFW() {
 void simulation_thread() {
     using namespace std;
     WaterSim sim(MAX_POINTS);
-    sim.step_size = 0.001;
+    sim.step_size = 0.01;
     sim.velocity_damping = 1;
-    sim.collision_smoothness = 1;
+    sim.collision_smoothness = 100;
     sim.collision_strength = 1;
     sim.gravity_vector[0] = 0;
     sim.gravity_vector[1] = 0.1;
-    sim.SetGridSize(50);
+    sim.SetGridSize(40);
 
     sim.ArrangeParticlesSquare();
 
@@ -108,25 +123,17 @@ void simulation_thread() {
 
     while (isRunning)
     {
-        current = chrono::high_resolution_clock::now();
+        /*current = chrono::high_resolution_clock::now();
         auto duration = chrono::duration_cast<chrono::milliseconds>(current - last).count();
         if (duration < delay) {
             this_thread::sleep_for(chrono::milliseconds(delay - duration));
         }
-        last = current;
+        last = current;*/
         sim.UpdateSim();
 		sim.GenerateOutput(points);
 
-        // check for R key
-        if (GetAsyncKeyState(0x52) & 0x8000) {
-            RotateVector(sim.gravity_vector, 0.1);
-            // display the new gravity vector
-            cout << "Gravity vector: (" << sim.gravity_vector[0] << ", " << sim.gravity_vector[1] << ")" << endl;
-            // display the angle of the gravity vector
-            cout << "Angle: " << atan2(sim.gravity_vector[1], sim.gravity_vector[0]) << endl;
-        }
-
-
+        sim.gravity_vector[0] = Engine::Input::normX / 100;
+		sim.gravity_vector[1] = Engine::Input::normY / 100;
     }
 
 }
