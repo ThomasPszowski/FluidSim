@@ -9,9 +9,11 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <list>
 
 #include "engine/window.h"
 #include "engine/input.h"
@@ -24,3 +26,7 @@
 #include "simulation/WaterSim.h"
 
 #include <Windows.h>
+
+typedef std::vector<float> vf;
+typedef std::vector<std::vector<float>> vvf;
+

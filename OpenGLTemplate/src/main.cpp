@@ -3,7 +3,7 @@ using namespace Engine;
 
 void terminateGLFW();
 
-const int MAX_POINTS = 50;
+const int MAX_POINTS = 200;
 GLuint pointsVAO, pointsVBO;
 std::vector<Point2D> points(MAX_POINTS);
 
@@ -105,35 +105,43 @@ void terminateGLFW() {
 void simulation_thread() {
     using namespace std;
     WaterSim sim(MAX_POINTS);
-    sim.step_size = 0.01;
+    sim.step_size = 0.001;
     sim.velocity_damping = 1;
     sim.collision_smoothness = 100;
-    sim.collision_strength = 1;
+    sim.collision_strength = 0.5;
+	sim.same_position_collision_strength = 1;
     sim.gravity_vector[0] = 0;
     sim.gravity_vector[1] = 0.1;
     sim.SetGridSize(40);
+	float gravity_multiplier = 0.01;
 
     sim.ArrangeParticlesSquare();
+    
+    float ups = 100. / sim.step_size;
+	int u_delay = 1000 / ups;
+	auto u_last = chrono::high_resolution_clock::now();
 
-    int fps = 60;
-    int delay = 1000 / fps;
+    int fps = 100;
+    int f_delay = 1000 / fps;
+    auto f_last = chrono::high_resolution_clock::now();
 
-    auto last = chrono::high_resolution_clock::now();
     auto current = chrono::high_resolution_clock::now();
 
     while (isRunning)
     {
-        /*current = chrono::high_resolution_clock::now();
-        auto duration = chrono::duration_cast<chrono::milliseconds>(current - last).count();
-        if (duration < delay) {
-            this_thread::sleep_for(chrono::milliseconds(delay - duration));
+        current = chrono::high_resolution_clock::now();
+        auto f_duration = chrono::duration_cast<chrono::milliseconds>(current - f_last).count();
+		auto u_duration = chrono::duration_cast<chrono::milliseconds>(current - u_last).count();
+		if (u_duration > u_delay) {
+			u_last = current;
+			sim.UpdateSim();
+		}
+        if (f_duration > f_delay) {
+            f_last = current;
+            sim.GenerateOutput(points);
         }
-        last = current;*/
-        sim.UpdateSim();
-		sim.GenerateOutput(points);
-
-        sim.gravity_vector[0] = Engine::Input::normX / 100;
-		sim.gravity_vector[1] = Engine::Input::normY / 100;
+        sim.gravity_vector[0] = Engine::Input::normX * gravity_multiplier;
+		sim.gravity_vector[1] = Engine::Input::normY * gravity_multiplier;
     }
 
 }

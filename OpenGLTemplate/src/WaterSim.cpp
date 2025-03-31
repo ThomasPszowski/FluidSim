@@ -1,4 +1,5 @@
 #pragma once
+
 #include "simulation/WaterSim.h"
 
 
@@ -6,6 +7,8 @@ WaterSim::WaterSim()
 {
 	this->collision_radius = 1.0 / grid_size;	
 	grid = vvlp(grid_size, vlp(grid_size));
+	SetVelocityGridSize(grid_size);
+	PrepareVelocityGrid();
 	particle_vector = vp(particle_count);
 }
 
@@ -14,6 +17,8 @@ WaterSim::WaterSim(int particle_count)
 	this->particle_count = particle_count;
 	this->collision_radius = 1.0 / grid_size;
 	grid = vvlp(grid_size, vlp(grid_size));
+	SetVelocityGridSize(grid_size);
+	PrepareVelocityGrid();
 	particle_vector = vp(particle_count);
 }
 
@@ -62,15 +67,11 @@ void WaterSim::Collide(Particle& p1, Particle& p2)
 	if (squared_distance < epsilon) {
 		p1.vx = (rand() - 1.) / RAND_MAX - 0.5 * same_position_collision_strength;
 		p1.vy = (rand() - 1.) / RAND_MAX - 0.5 * same_position_collision_strength;
-		p2.vx = (rand() - 1.) / RAND_MAX - 0.5 * same_position_collision_strength;
-		p2.vy = (rand() - 1.) / RAND_MAX - 0.5 * same_position_collision_strength;
 		return;
 	}
 	float repulsion = collision_strength / (collision_smoothness * squared_distance + 1);
 	p1.vx += repulsion * dx;
 	p1.vy += repulsion * dy;
-	p2.vx -= repulsion * dx;
-	p2.vy -= repulsion * dy;
 }
 
 
@@ -154,8 +155,6 @@ void WaterSim::UpdateSim()
 
 	}
 
-	LimitVelocity(0.1);
-
 	for (Particle& p : particle_vector) {
 		for (int i = -1; i <= 1; i++) {
 			for (int j = -1; j <= 1; j++) {
@@ -174,8 +173,8 @@ void WaterSim::UpdateSim()
 	
 
 	for (Particle& p : particle_vector) {
-		//Move(p);
-		MoveWithinCircle(p);
+		Move(p);
+		//MoveWithinCircle(p);
 		UpdateGrid(p);
 	}
 }
@@ -191,3 +190,103 @@ void WaterSim::SetGridSize(int size)
 	}
 }
 
+void WaterSim::SetVelocityGridSize(int size)
+{
+	velocity_grid_size = size;
+	combined_velocities = vvvc(velocity_grid_size, vvc(velocity_grid_size));
+	horizontal_velocities = vvf(velocity_grid_size + 1, vf(velocity_grid_size + 1));
+	vertical_velocities = vvf(velocity_grid_size + 1, vf(velocity_grid_size + 1));
+	velocity_cell_size = 1.0 / velocity_grid_size;
+}
+
+void WaterSim::PrepareVelocityGrid()
+{
+	for (int i = 0; i < velocity_grid_size; i++) {
+		for (int j = 0; j < velocity_grid_size; j++) {
+			combined_velocities[i][j].up = &vertical_velocities[i+1][j];
+			combined_velocities[i][j].down = &vertical_velocities[i][j];
+			combined_velocities[i][j].left = &horizontal_velocities[i][j];
+			combined_velocities[i][j].right = &horizontal_velocities[i][j + 1];
+		}
+	}
+	for (int i = 0; i < velocity_grid_size; i++) {
+		combined_velocities[velocity_grid_size - 1][i].up = nullptr;
+		combined_velocities[0][i].down = nullptr;
+		combined_velocities[i][0].left = nullptr;
+		combined_velocities[i][velocity_grid_size - 1].right = nullptr;
+	}
+}
+
+void WaterSim::TransferVelocitiesToGrid()
+{
+	for (vvc& row : combined_velocities) {
+		for (VelocityCell& cell : row) {
+			if (cell.up) {
+				*cell.up = 0;
+			}
+			if (cell.down) {
+				*cell.down = 0;
+			}
+			if (cell.left) {
+				*cell.left = 0;
+			}
+			if (cell.right) {
+				*cell.right = 0;
+			}
+			cell.number_of_particles = 0;
+		}
+	}
+	for (Particle& p : particle_vector) {
+		int j = p.x * velocity_grid_size;
+		int i = p.y * velocity_grid_size;
+		float dx = p.x * velocity_grid_size - j;
+		float dy = p.y * velocity_grid_size - i;
+		combined_velocities[i][j].number_of_particles++;
+		
+		if (combined_velocities[i][j].up and combined_velocities[i][j].down) {
+			*combined_velocities[i][j].down += p.vy * dy;
+			*combined_velocities[i][j].up += p.vy * (1.0 - dy);
+		}
+		else if (combined_velocities[i][j].up) {
+			*combined_velocities[i][j].up += p.vy;
+		}
+		else if (combined_velocities[i][j].down) {
+			*combined_velocities[i][j].down += p.vy;
+		}
+		
+		if (combined_velocities[i][j].left and combined_velocities[i][j].right) {
+			*combined_velocities[i][j].left += p.vx * dx;
+			*combined_velocities[i][j].right += p.vx * (1.0 - dx);
+		}
+		else if (combined_velocities[i][j].left) {
+			*combined_velocities[i][j].left += p.vx;
+		}
+		else if (combined_velocities[i][j].right) {
+			*combined_velocities[i][j].right += p.vx;
+		}
+	}
+}
+
+void WaterSim::ReCalculateVelocities() {
+
+}
+
+void WaterSim::TransferVelocitiesToParticles() {
+	for (Particle& p : particle_vector) {
+		int j = p.x * velocity_grid_size;
+		int i = p.y * velocity_grid_size;
+		float dx = p.x * velocity_grid_size - j;
+		float dy = p.y * velocity_grid_size - i;
+
+		if (combined_velocities[i][j].up and combined_velocities[i][j].down) {
+			p.vy = *combined_velocities[i][j].down * dy + *combined_velocities[i][j].up * (1.0 - dy);
+		}
+		else if (combined_velocities[i][j].up) {
+			p.vy = *combined_velocities[i][j].up;
+		}
+		else if (combined_velocities[i][j].down) {
+			p.vy = *combined_velocities[i][j].down;
+		}
+		
+	}
+}
