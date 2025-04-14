@@ -106,13 +106,14 @@ void simulation_thread() {
     using namespace std;
     WaterSim sim(MAX_POINTS);
     sim.step_size = 0.001;
-    sim.velocity_damping = 1;
+    sim.velocity_damping = 0.99;
     sim.collision_smoothness = 100;
     sim.collision_strength = 0.5;
 	sim.same_position_collision_strength = 1;
     sim.gravity_vector[0] = 0;
     sim.gravity_vector[1] = 0.1;
     sim.SetGridSize(40);
+	sim.SetVelocityGridSize(40);
 	float gravity_multiplier = 0.01;
 
     sim.ArrangeParticlesSquare();

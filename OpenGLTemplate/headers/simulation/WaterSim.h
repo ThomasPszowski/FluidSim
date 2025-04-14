@@ -6,7 +6,7 @@ struct Point2D {
 };
 
 struct VelocityCell {
-	float* up, * down, * left, * right;
+	std::vector<float>* up, * down, * left, * right;
 	int number_of_particles = 0;
 };
 
@@ -33,6 +33,7 @@ public:
 	typedef std::vector<WaterSim::Particle> vp;
 	typedef std::vector<float> vf;
 	typedef std::vector<std::vector<float>> vvf;
+	typedef std::vector<std::vector<std::vector<float>>> vvvf;
 	typedef std::vector<VelocityCell> vvc;
 	typedef std::vector<std::vector<VelocityCell>> vvvc;
 	
@@ -46,8 +47,8 @@ public:
 
 	vvlp grid;
 	vp particle_vector;
-	vvf horizontal_velocities;
-	vvf vertical_velocities;
+	vvvf horizontal_velocities;
+	vvvf vertical_velocities;
 	vvvc combined_velocities;
 	float velocity_cell_size = 1.0 / velocity_grid_size;
 
