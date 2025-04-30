@@ -2,7 +2,7 @@
 using namespace Engine;
 
 void terminateGLFW();
-#define PARTICLE_COUNT 1000
+#define PARTICLE_COUNT 200
 
 
 const int MAX_POINTS = PARTICLE_COUNT;
@@ -150,10 +150,15 @@ void simulation_thread() {
 
 }
 
-#define GRID_SIZE 32
+#define GRID_SIZE 12
+#define REPULSION_GRID_SIZE 16
+#define HASH_TABLE_SIZE (PARTICLE_COUNT * 2)
+#define DT 0.1f
+#define GRAVITY_MAGNITUDE -1.0f
+const float minDist = (float)GRID_SIZE / REPULSION_GRID_SIZE + 0.001;
+const float k = 1.5f;
+const float eps = 0.05f;
 
-#define DT 0.01f
-#define GRAVITY_MAGNITUDE -9.8f
 
 typedef struct {
     float x, y;
@@ -169,13 +174,15 @@ typedef struct {
     float mass;
 } GridCell;
 
+int hashTable[HASH_TABLE_SIZE];
+Particle* particle_lookup[PARTICLE_COUNT + 1];
 Particle particles[PARTICLE_COUNT];
 GridCell grid[GRID_SIZE][GRID_SIZE];
 
 void init_particles() {
     for (int i = 0; i < PARTICLE_COUNT; i++) {
-        particles[i].pos.x = 10.0f + (float)rand() / RAND_MAX * GRID_SIZE;
-        particles[i].pos.y = 20.0f + (float)rand() / RAND_MAX * GRID_SIZE;
+        particles[i].pos.x = (float)rand() / RAND_MAX * GRID_SIZE;
+        particles[i].pos.y = (float)rand() / RAND_MAX * GRID_SIZE;
         particles[i].vel.x = 0.0f;
         particles[i].vel.y = 0.0f;
     }
@@ -211,7 +218,7 @@ void particle_to_grid() {
         }
 }
 
-Vec2 gravity = { 0.0f, -9.8f };  
+Vec2 gravity = { 0.0f, -9.8f };
 
 void apply_gravity() {
     for (int y = 0; y < GRID_SIZE; y++) {
@@ -257,43 +264,126 @@ void advect_particles() {
         p->pos.y += p->vel.y * DT;
 
         if (p->pos.x < 0) { p->pos.x = 0; p->vel.x *= -0.5f; }
-        if (p->pos.x >= GRID_SIZE) { p->pos.x = GRID_SIZE - 0.1; p->vel.x *= -0.5f; }
+        if (p->pos.x >= GRID_SIZE) { p->pos.x = GRID_SIZE - 0.01; p->vel.x *= -0.5f; }
 
         if (p->pos.y < 0) { p->pos.y = 0; p->vel.y *= -0.5f; }
-        if (p->pos.y >= GRID_SIZE) { p->pos.y = GRID_SIZE - 0.1; p->vel.y *= -0.5f; }
+        if (p->pos.y >= GRID_SIZE) { p->pos.y = GRID_SIZE - 0.01; p->vel.y *= -0.5f; }
+    }
+}
+
+void advect_particles_circular() {
+    for (int i = 0; i < PARTICLE_COUNT; i++) {
+        Particle* p = &particles[i];
+
+        p->pos.x += p->vel.x * DT;
+        p->pos.y += p->vel.y * DT;
+
+#define CENTER (GRID_SIZE / 2.0)
+#define SQUARED_RADIUS (CENTER * CENTER)
+
+        float dx = p->pos.x - CENTER;
+        float dy = p->pos.y - CENTER;
+        float dist2 = dx * dx + dy * dy;
+
+        if (dist2 > SQUARED_RADIUS) {
+            float dist = sqrtf(dist2);
+            p->pos.x = CENTER + (dx / dist) * CENTER;
+            p->pos.y = CENTER + (dy / dist) * CENTER;
+            p->vel.x *= -0.5f;
+            p->vel.y *= -0.5f;
+        }
+
+
+
+    }
+}
+
+void apply_repulsion(Particle* p1, Particle* p2) {
+    Vec2 dp = {
+        p1->pos.x - p2->pos.x,
+        p1->pos.y - p2->pos.y
+    };
+    float dist2 = dp.x * dp.x + dp.y * dp.y;
+    if (dist2 < eps) {
+        p1->vel.x = GRAVITY_MAGNITUDE * ((float)(rand() % 20000) / 10000.0 - 1.0);
+        p1->vel.y = GRAVITY_MAGNITUDE * ((float)(rand() % 20000) / 10000.0 - 1.0);
+        p2->vel.x = GRAVITY_MAGNITUDE * ((float)(rand() % 20000) / 10000.0 - 1.0);
+        p2->vel.y = GRAVITY_MAGNITUDE * ((float)(rand() % 20000) / 10000.0 - 1.0);
+    }
+    if (dist2 < minDist * minDist) {
+        float dist = sqrtf(dist2);
+        float force = k * (minDist - dist) / dist;
+
+        Vec2 dir = { dp.x / dist, dp.y / dist };
+        p1->vel.x += dir.x * force * DT;
+        p1->vel.y += dir.y * force * DT;
+        p2->vel.x -= dir.x * force * DT;
+        p2->vel.y -= dir.y * force * DT;
     }
 }
 
 void apply_repulsion() {
-    const float minDist = 2.0f;
-    const float k = 10.0f; 
-    const float eps = 0.001f;
-
     for (int i = 0; i < PARTICLE_COUNT; i++) {
         for (int j = i + 1; j < PARTICLE_COUNT; j++) {
-            Vec2 dp = {
-                particles[i].pos.x - particles[j].pos.x,
-                particles[i].pos.y - particles[j].pos.y
-            };
-            float dist2 = dp.x * dp.x + dp.y * dp.y;
-            if (dist2 < eps) {
-                particles[i].vel.x *= -1;
-                particles[i].vel.y *= -1;
-            }
-            if (dist2 < minDist * minDist) {
-                float dist = sqrtf(dist2);
-                float force = k * (minDist - dist) / dist;
-
-                Vec2 dir = { dp.x / dist, dp.y / dist };
-                particles[i].vel.x += dir.x * force * DT;
-                particles[i].vel.y += dir.y * force * DT;
-                particles[j].vel.x -= dir.x * force * DT;
-                particles[j].vel.y -= dir.y * force * DT;
-            }
-
+            apply_repulsion(particles + i, particles + j);
         }
     }
 }
+
+int hashCoords(int xi, int yi) {
+    int h = (xi * 92837111) ^ (yi * yi * 689287499);
+    if (h < 0) h = -h;
+    return h % (HASH_TABLE_SIZE - 1);
+}
+
+int hashCoords(Particle* p) {
+    return hashCoords((int)(p->pos.x / minDist), (int)(p->pos.y / minDist));
+}
+
+void apply_repulsion_optimized() {
+    for (int i = 0; i < HASH_TABLE_SIZE; i++) {
+        hashTable[i] = 0;
+    }
+    for (int i = 0; i < PARTICLE_COUNT; i++) {
+        Particle* p = particles + i;
+        int hash_index = hashCoords(p);
+        hashTable[hash_index]++;
+    }
+    for (int i = 1; i < HASH_TABLE_SIZE; i++) {
+        hashTable[i] += hashTable[i - 1];
+    }
+    for (int i = 0; i < PARTICLE_COUNT; i++) {
+        Particle* p = particles + i;
+        int hash_index = hashCoords(p);
+        int final_index = --hashTable[hash_index];
+        particle_lookup[final_index] = p;
+    }
+    for (int i1 = 0; i1 < REPULSION_GRID_SIZE; i1++) {
+        for (int j1 = 0; j1 < REPULSION_GRID_SIZE; j1++) {
+            for (int i2 = i1 - 1; i2 <= i1 + 1 && i2 < REPULSION_GRID_SIZE; i2++) {
+                if (i2 < 0) continue;
+                for (int j2 = j1 - 1; j2 <= j1 + 1 && j2 < REPULSION_GRID_SIZE; j2++) {
+                    if (j2 < 0) continue;
+                    int hash_index1 = hashCoords(i1, j1);
+                    int lookup_index1 = hashTable[hash_index1];
+                    while (lookup_index1 >= 0 && lookup_index1 < PARTICLE_COUNT && hashCoords(particle_lookup[lookup_index1]) == hash_index1) {
+                        int hash_index2 = hashCoords(i2, j2);
+                        int lookup_index2 = hashTable[hash_index2];
+                        while (lookup_index2 >= 0 && lookup_index2 < PARTICLE_COUNT && hashCoords(particle_lookup[lookup_index2]) == hash_index2) {
+                            if (particle_lookup[lookup_index1] != particle_lookup[lookup_index2]) {
+                                apply_repulsion(particle_lookup[lookup_index1], particle_lookup[lookup_index2]);
+                            }
+                            lookup_index2++;
+                        }
+                        lookup_index1++;
+                    }
+
+                }
+            }
+        }
+    }
+}
+
 
 
 void step_simulation() {
@@ -301,7 +391,9 @@ void step_simulation() {
     particle_to_grid();
     apply_gravity();
     grid_to_particle();
-    apply_repulsion();
+    apply_repulsion_optimized();
+    //apply_repulsion();
+    //advect_particles_circular();
     advect_particles();
 }
 
@@ -311,19 +403,24 @@ void SimC_simulation_thread() {
     Vec2 gravityDirection = { 0.0f, 1.0f };
 
     while (isRunning) {
-        
+
         for (int i = 0; i < PARTICLE_COUNT; i++) {
-			points[i].x = particles[i].pos.x / 32.;
-			points[i].y = particles[i].pos.y / 32.;
-		}
+            points[i].x = particles[i].pos.x / GRID_SIZE;
+            points[i].y = particles[i].pos.y / GRID_SIZE;
+        }
         //std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
         gravityDirection.x = Engine::Input::normX;
         gravityDirection.y = Engine::Input::normY;
         set_gravity_direction(gravityDirection);
+
+        auto start = std::chrono::high_resolution_clock::now();
         step_simulation();
-        
-	}
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+        std::cout << "Time taken: " << duration << " microseconds" << std::endl;
+
+    }
 }
 
 
