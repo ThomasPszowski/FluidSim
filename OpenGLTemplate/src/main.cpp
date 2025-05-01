@@ -2,7 +2,7 @@
 using namespace Engine;
 
 void terminateGLFW();
-#define PARTICLE_COUNT 200
+#define PARTICLE_COUNT 50
 
 
 const int MAX_POINTS = PARTICLE_COUNT;
@@ -150,12 +150,13 @@ void simulation_thread() {
 
 }
 
-#define GRID_SIZE 12
-#define REPULSION_GRID_SIZE 16
+#define GRID_SIZE 8
+#define REPULSION_GRID_DIM 10
+#define REPULSION_GRID_SIZE (REPULSION_GRID_DIM * REPULSION_GRID_DIM)
 #define HASH_TABLE_SIZE (PARTICLE_COUNT * 2)
 #define DT 0.1f
 #define GRAVITY_MAGNITUDE -1.0f
-const float minDist = (float)GRID_SIZE / REPULSION_GRID_SIZE + 0.001;
+const float minDist = (float)GRID_SIZE / REPULSION_GRID_DIM + 0.001;
 const float k = 1.5f;
 const float eps = 0.05f;
 
@@ -175,6 +176,7 @@ typedef struct {
 } GridCell;
 
 int hashTable[HASH_TABLE_SIZE];
+int indexTable[REPULSION_GRID_DIM][REPULSION_GRID_DIM];
 Particle* particle_lookup[PARTICLE_COUNT + 1];
 Particle particles[PARTICLE_COUNT];
 GridCell grid[GRID_SIZE][GRID_SIZE];
@@ -278,7 +280,7 @@ void advect_particles_circular() {
         p->pos.x += p->vel.x * DT;
         p->pos.y += p->vel.y * DT;
 
-#define CENTER (GRID_SIZE / 2.0)
+#define CENTER (GRID_SIZE / 2.0f)
 #define SQUARED_RADIUS (CENTER * CENTER)
 
         float dx = p->pos.x - CENTER;
@@ -287,14 +289,19 @@ void advect_particles_circular() {
 
         if (dist2 > SQUARED_RADIUS) {
             float dist = sqrtf(dist2);
-            p->pos.x = CENTER + (dx / dist) * CENTER;
-            p->pos.y = CENTER + (dy / dist) * CENTER;
-            p->vel.x *= -0.5f;
-            p->vel.y *= -0.5f;
+            float nx = dx / dist;  // normal x
+            float ny = dy / dist;  // normal y
+
+            // Przenieś cząstkę na krawędź koła
+            p->pos.x = CENTER + nx * CENTER;
+            p->pos.y = CENTER + ny * CENTER;
+
+            // Odbij wektor prędkości względem normalnej
+            float dot = p->vel.x * nx + p->vel.y * ny;
+            p->vel.x -= 2.0f * dot * nx;
+            p->vel.y -= 2.0f * dot * ny;
+
         }
-
-
-
     }
 }
 
@@ -309,6 +316,8 @@ void apply_repulsion(Particle* p1, Particle* p2) {
         p1->vel.y = GRAVITY_MAGNITUDE * ((float)(rand() % 20000) / 10000.0 - 1.0);
         p2->vel.x = GRAVITY_MAGNITUDE * ((float)(rand() % 20000) / 10000.0 - 1.0);
         p2->vel.y = GRAVITY_MAGNITUDE * ((float)(rand() % 20000) / 10000.0 - 1.0);
+		//p1->vel.x *= -1;
+		//p1->vel.y *= -1;
     }
     if (dist2 < minDist * minDist) {
         float dist = sqrtf(dist2);
@@ -358,11 +367,11 @@ void apply_repulsion_optimized() {
         int final_index = --hashTable[hash_index];
         particle_lookup[final_index] = p;
     }
-    for (int i1 = 0; i1 < REPULSION_GRID_SIZE; i1++) {
-        for (int j1 = 0; j1 < REPULSION_GRID_SIZE; j1++) {
-            for (int i2 = i1 - 1; i2 <= i1 + 1 && i2 < REPULSION_GRID_SIZE; i2++) {
+    for (int i1 = 0; i1 < REPULSION_GRID_DIM; i1++) {
+        for (int j1 = 0; j1 < REPULSION_GRID_DIM; j1++) {
+            for (int i2 = i1 - 1; i2 <= i1 + 1 && i2 < REPULSION_GRID_DIM; i2++) {
                 if (i2 < 0) continue;
-                for (int j2 = j1 - 1; j2 <= j1 + 1 && j2 < REPULSION_GRID_SIZE; j2++) {
+                for (int j2 = j1 - 1; j2 <= j1 + 1 && j2 < REPULSION_GRID_DIM; j2++) {
                     if (j2 < 0) continue;
                     int hash_index1 = hashCoords(i1, j1);
                     int lookup_index1 = hashTable[hash_index1];
@@ -384,14 +393,77 @@ void apply_repulsion_optimized() {
     }
 }
 
+void apply_repulsion_optimized_without_hash() {
+    for (int i = 0; i < REPULSION_GRID_DIM; i++) {
+		for (int j = 0; j < REPULSION_GRID_DIM; j++) {
+			indexTable[i][j] = 0;
+		}
+    }
+    for (int i = 0; i < PARTICLE_COUNT; i++) {
+        Particle* p = particles + i;
+        if (isnan(p->pos.x) || isnan(p->pos.y)) {
+            p->pos.x = 0;
+            p->pos.y = 0;
+            p->vel.x = 0;
+            p->vel.y = 0;
+        }
+        int x = (int)(p->pos.x / minDist);
+        int y = (int)(p->pos.y / minDist);
+		indexTable[x][y]++;
+    }
+    
+    int last_val = 0;
+	for (int i = 0; i < REPULSION_GRID_DIM; i++) {
+		for (int j = 0; j < REPULSION_GRID_DIM; j++) {
+			indexTable[i][j] += last_val;
+			last_val = indexTable[i][j];
+		}
+	}
 
+    for (int i = 0; i < PARTICLE_COUNT; i++) {
+        Particle* p = particles + i;
+        int x = (int)(p->pos.x / minDist);
+        int y = (int)(p->pos.y / minDist);
+        int final_index = --indexTable[x][y];
+        particle_lookup[final_index] = p;
+    }
+    for (int i1 = 0; i1 < REPULSION_GRID_DIM; i1++) {
+        for (int j1 = 0; j1 < REPULSION_GRID_DIM; j1++) {
+            for (int i2 = i1 - 1; i2 <= i1 + 1 && i2 < REPULSION_GRID_DIM; i2++) {
+                if (i2 < 0) continue;
+                for (int j2 = j1 - 1; j2 <= j1 + 1 && j2 < REPULSION_GRID_DIM; j2++) {
+                    if (j2 < 0) continue;
+                    int lookup_index1 = indexTable[i1][j1];
+                    while (lookup_index1 >= 0 
+                        && lookup_index1 < PARTICLE_COUNT 
+                        && (int)(particle_lookup[lookup_index1]->pos.x / minDist) == i1
+                        && (int)(particle_lookup[lookup_index1]->pos.y / minDist) == j1) {
+                        int lookup_index2 = indexTable[i2][j2];
+                        while (lookup_index2 >= 0 
+                            && lookup_index2 < PARTICLE_COUNT 
+                            && (int)(particle_lookup[lookup_index2]->pos.x / minDist) == i2
+                            && (int)(particle_lookup[lookup_index2]->pos.y / minDist) == j2) {
+                            if (particle_lookup[lookup_index1] != particle_lookup[lookup_index2]) {
+                                apply_repulsion(particle_lookup[lookup_index1], particle_lookup[lookup_index2]);
+                            }
+                            lookup_index2++;
+                        }
+                        lookup_index1++;
+                    }
+
+                }
+            }
+        }
+    }
+}
 
 void step_simulation() {
     clear_grid();
     particle_to_grid();
     apply_gravity();
     grid_to_particle();
-    apply_repulsion_optimized();
+	apply_repulsion_optimized_without_hash();
+    //apply_repulsion_optimized();
     //apply_repulsion();
     //advect_particles_circular();
     advect_particles();
@@ -401,6 +473,8 @@ void SimC_simulation_thread() {
 
     init_particles();
     Vec2 gravityDirection = { 0.0f, 1.0f };
+    unsigned long long sum = 0;
+    int n = 1;
 
     while (isRunning) {
 
@@ -408,7 +482,7 @@ void SimC_simulation_thread() {
             points[i].x = particles[i].pos.x / GRID_SIZE;
             points[i].y = particles[i].pos.y / GRID_SIZE;
         }
-        //std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
         gravityDirection.x = Engine::Input::normX;
         gravityDirection.y = Engine::Input::normY;
@@ -418,8 +492,10 @@ void SimC_simulation_thread() {
         step_simulation();
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-        std::cout << "Time taken: " << duration << " microseconds" << std::endl;
-
+		sum += duration;
+        std::cout << "Time taken: " << sum / n << std::endl;
+        n++;
+        
     }
 }
 
